@@ -303,17 +303,33 @@ public class BinanceOptionsClient {
                     }
                     
                     String responseBody = response.body().string();
+                    logger.debug("ExchangeInfo response: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
+                    
                     JsonNode jsonNode = objectMapper.readTree(responseBody);
                     
                     List<LocalDate> expiries = new ArrayList<>();
+                    int totalSymbols = 0;
+                    int btcSymbols = 0;
                     
                     // exchangeInfo returns: {"symbols": [...], "timezone": "UTC", ...}
                     JsonNode symbolsNode = jsonNode.get("symbols");
                     if (symbolsNode != null && symbolsNode.isArray()) {
+                        totalSymbols = symbolsNode.size();
+                        logger.info("Found {} total symbols in exchangeInfo", totalSymbols);
+                        
+                        // Log first few symbols for debugging
+                        for (int i = 0; i < Math.min(5, symbolsNode.size()); i++) {
+                            JsonNode sampleNode = symbolsNode.get(i);
+                            logger.debug("Sample symbol {}: {}", i, sampleNode.get("symbol").asText());
+                        }
+                        
                         for (JsonNode contractNode : symbolsNode) {
                             String symbol = contractNode.get("symbol").asText();
                             
                             if (symbol.startsWith("BTC")) {
+                                btcSymbols++;
+                                logger.debug("Processing BTC symbol: {}", symbol);
+                                
                                 String[] parts = symbol.split("-");
                                 if (parts.length >= 2) {
                                     try {
@@ -322,15 +338,52 @@ public class BinanceOptionsClient {
                                         
                                         if (!expiries.contains(expiry)) {
                                             expiries.add(expiry);
+                                            logger.debug("Added expiry: {} from symbol: {}", expiry, symbol);
                                         }
                                     } catch (Exception e) {
-                                        // Skip invalid expiry formats
+                                        logger.warn("Failed to parse expiry from symbol: {} - {}", symbol, e.getMessage());
                                     }
+                                } else {
+                                    logger.warn("Invalid symbol format (not enough parts): {}", symbol);
                                 }
                             }
                         }
+                        
+                        logger.info("Found {} BTC symbols out of {} total symbols", btcSymbols, totalSymbols);
                     } else {
-                        logger.warn("No 'symbols' array found in exchangeInfo response");
+                        // Log available field names to debug the response structure
+                        StringBuilder fieldNames = new StringBuilder();
+                        jsonNode.fieldNames().forEachRemaining(name -> fieldNames.append(name).append(", "));
+                        logger.warn("No 'symbols' array found in exchangeInfo response. Available keys: {}", fieldNames.toString());
+                        
+                        // Try alternative field names that might contain the symbols
+                        String[] alternativeFields = {"optionSymbols", "contracts", "optionContracts", "data"};
+                        for (String fieldName : alternativeFields) {
+                            JsonNode altNode = jsonNode.get(fieldName);
+                            if (altNode != null && altNode.isArray()) {
+                                logger.info("Found alternative symbols array in field: {}", fieldName);
+                                // Process this alternative array
+                                for (JsonNode contractNode : altNode) {
+                                    String symbol = contractNode.get("symbol").asText();
+                                    if (symbol.startsWith("BTC")) {
+                                        btcSymbols++;
+                                        String[] parts = symbol.split("-");
+                                        if (parts.length >= 2) {
+                                            try {
+                                                String expiryStr = parts[1];
+                                                LocalDate expiry = LocalDate.parse("20" + expiryStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
+                                                if (!expiries.contains(expiry)) {
+                                                    expiries.add(expiry);
+                                                }
+                                            } catch (Exception e) {
+                                                logger.warn("Failed to parse expiry from symbol: {}", symbol);
+                                            }
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                        }
                     }
                     
                     expiries.sort(LocalDate::compareTo);
