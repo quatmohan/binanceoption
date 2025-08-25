@@ -122,12 +122,63 @@ If you want to receive notifications:
 
 ## 🚀 Running the Application
 
-### Method 1: Using Maven (Development)
+### Method 1: Eclipse IDE (Development & Debugging)
+
+#### Eclipse Setup Steps:
+
+1. **Install Prerequisites**
+   - **Eclipse IDE** (2021-03 or later recommended)
+   - **Java 11 JDK** (not just JRE)
+   - **Maven integration** (usually included in Eclipse IDE for Enterprise Java Developers)
+
+2. **Import the Project**
+   ```
+   File → Import → Existing Maven Projects
+   Browse to your project folder → Select pom.xml → Finish
+   ```
+
+3. **Configure Java Build Path**
+   - Right-click project → Properties → Java Build Path
+   - Ensure Java 11 is selected in "Modulepath" or "Classpath"
+   - If not available: Add Library → JRE System Library → Java 11
+
+4. **Create Configuration File**
+   - Copy `config-example.yml` to `config.yml` in project root
+   - Edit with your Binance API credentials (see Configuration section)
+
+5. **Create Run Configuration**
+   - Right-click project → Run As → Run Configurations
+   - Create new "Java Application"
+   - **Main class**: `com.trading.bot.BtcOptionsStraddleBotApplication`
+   - **Program arguments** (optional): `--spring.config.location=file:./config.yml`
+   - **VM arguments** (optional): `-Dspring.profiles.active=development`
+
+6. **Run the Application**
+   - Click "Run" or use the green play button
+   - Check Console tab for output
+
+#### Eclipse Debug Configuration:
+```
+Main Class: com.trading.bot.BtcOptionsStraddleBotApplication
+VM Arguments: -Dspring.profiles.active=development -Dlogging.level.com.trading.bot=DEBUG
+Program Arguments: --spring.config.location=file:./config.yml
+Working Directory: ${workspace_loc:btc-options-straddle-bot}
+```
+
+#### Eclipse Environment Variables (Alternative to config.yml):
+```
+BINANCE_API_KEY=your_api_key_here
+BINANCE_SECRET_KEY=your_secret_key_here
+TELEGRAM_BOT_TOKEN=your_telegram_token (optional)
+TELEGRAM_CHAT_ID=your_chat_id (optional)
+```
+
+### Method 2: Command Line (Maven)
 ```bash
 mvn spring-boot:run
 ```
 
-### Method 2: Using JAR File (Production)
+### Method 3: JAR File (Production)
 ```bash
 # Run with default configuration
 java -jar target/btc-options-straddle-bot-1.0.0.jar
@@ -139,7 +190,7 @@ java -jar target/btc-options-straddle-bot-1.0.0.jar --spring.config.location=fil
 BINANCE_API_KEY="your_key" BINANCE_SECRET_KEY="your_secret" java -jar target/btc-options-straddle-bot-1.0.0.jar
 ```
 
-### Method 3: Background Execution
+### Method 4: Background Execution
 ```bash
 # Run in background with nohup
 nohup java -jar target/btc-options-straddle-bot-1.0.0.jar > bot.log 2>&1 &
@@ -322,13 +373,55 @@ logging:
     okhttp3: DEBUG  # For API request/response logging
 ```
 
+#### 5. **Eclipse-Specific Issues**
+
+**Problem: "Main class not found"**
+```
+Error: Could not find or load main class com.trading.bot.BtcOptionsStraddleBotApplication
+```
+**Solutions:**
+- Refresh project: Right-click → Refresh (F5)
+- Clean and rebuild: Project → Clean → Select project → Clean
+- Check build path: Properties → Java Build Path → Source
+- Ensure `src/main/java` is in source folders
+
+**Problem: "Maven dependencies not resolved"**
+```
+Error: Package org.springframework.boot does not exist
+```
+**Solutions:**
+- Right-click project → Maven → Reload Projects
+- Right-click project → Maven → Update Project → Force Update
+- Check internet connection for dependency downloads
+- Verify Maven settings: Window → Preferences → Maven
+
+**Problem: "Wrong Java version"**
+```
+Error: Unsupported class file major version
+```
+**Solutions:**
+- Check project Java version: Properties → Java Build Path → Libraries
+- Verify Eclipse JRE: Window → Preferences → Java → Installed JREs
+- Ensure Java 11+ is selected and default
+
+**Problem: "Config file not found"**
+```
+Error: Could not resolve placeholder 'BINANCE_API_KEY'
+```
+**Solutions:**
+- Ensure `config.yml` is in project root directory
+- Check run configuration working directory
+- Use absolute path in program arguments: `--spring.config.location=file:/full/path/to/config.yml`
+- Alternative: Set environment variables in run configuration
+
 ### Getting Help
 
-1. **Check logs first**: `tail -f logs/errors.log`
+1. **Check logs first**: `tail -f logs/errors.log` (or Eclipse Console tab)
 2. **Enable debug mode** and reproduce the issue
 3. **Verify configuration** against the template
 4. **Test with smaller position sizes** first
 5. **Use Binance testnet** for initial testing (if available)
+6. **For Eclipse issues**: Check Problems tab and Error Log view
 
 ## 🔒 Security Best Practices
 
