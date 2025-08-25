@@ -62,6 +62,7 @@ trading:
   
   # Binance API Configuration
   binance-api-url: "https://eapi.binance.com"
+  binance-futures-api-url: "https://fapi.binance.com"
   
   # Order Management
   order-timeout-seconds: 60

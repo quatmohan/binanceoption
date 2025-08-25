@@ -104,7 +104,8 @@ public class ConfigLoader {
         logger.info("  Stop Loss: {}%", tradingConfig.getStopLossPercentage());
         logger.info("  Profit Target: {}%", tradingConfig.getProfitTargetPercentage());
         logger.info("  Portfolio Risk: {}%", tradingConfig.getPortfolioRiskPercentage());
-        logger.info("  Binance API URL: {}", tradingConfig.getBinanceApiUrl());
+        logger.info("  Binance Options API URL: {}", tradingConfig.getBinanceApiUrl());
+        logger.info("  Binance Futures API URL: {}", tradingConfig.getBinanceFuturesApiUrl());
         logger.info("  Order Timeout: {} seconds", tradingConfig.getOrderTimeoutSeconds());
         
         // Don't log sensitive information

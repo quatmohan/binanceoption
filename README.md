@@ -221,7 +221,8 @@ pkill -f btc-options-straddle-bot
    - Displays countdown and configuration summary
 
 3. **📈 Trading Cycle** (repeats every cycle interval):
-   - Fetches BTC futures price and options chain
+   - Fetches BTC futures price from Binance Futures API (`https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT`)
+   - Fetches options chain from Binance Options API
    - Executes iron butterfly strategy:
      - **Sell** ATM call option
      - **Sell** ATM put option  

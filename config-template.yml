@@ -65,6 +65,13 @@ trading:
   max-order-book-depth: 5          # Look up to 5 levels deep in order book
   
   # ========================================
+  # Binance API URLs Configuration
+  # ========================================
+  # Usually don't need to change these unless using testnet
+  binance-api-url: "https://eapi.binance.com"        # Options API
+  binance-futures-api-url: "https://fapi.binance.com" # Futures API for BTC price
+  
+  # ========================================
   # OPTIONAL: Telegram Notifications
   # ========================================
   # Create a bot via @BotFather on Telegram to get these values

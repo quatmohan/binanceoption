@@ -54,9 +54,10 @@ public class BinanceOptionsClient {
     public BigDecimal getBTCFuturesPrice() throws Exception {
         return retryHandler.executeWithRetry(() -> {
             try {
-                String url = config.getBinanceApiUrl() + "/eapi/v1/ticker";
+                // Use Binance Futures API for BTC price
+                String url = config.getBinanceFuturesApiUrl() + "/fapi/v1/ticker/price?symbol=BTCUSDT";
                 Request request = new Request.Builder()
-                        .url(url + "?symbol=BTCUSDT")
+                        .url(url)
                         .get()
                         .build();
                 
@@ -68,11 +69,11 @@ public class BinanceOptionsClient {
                     String responseBody = response.body().string();
                     JsonNode jsonNode = objectMapper.readTree(responseBody);
                     
-                    if (jsonNode.isArray() && jsonNode.size() > 0) {
-                        return new BigDecimal(jsonNode.get(0).get("lastPrice").asText());
-                    } else {
-                        return new BigDecimal(jsonNode.get("lastPrice").asText());
-                    }
+                    // Futures API returns: {"symbol":"BTCUSDT","price":"43250.50"}
+                    BigDecimal price = new BigDecimal(jsonNode.get("price").asText());
+                    logger.info("Retrieved BTC futures price: {} from {}", price, url);
+                    
+                    return price;
                 }
             } catch (IOException e) {
                 throw new RuntimeException("Error fetching BTC futures price", e);

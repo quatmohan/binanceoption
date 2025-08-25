@@ -101,6 +101,7 @@ public class TradingConfig {
     
     // Binance API Configuration
     private String binanceApiUrl = "https://eapi.binance.com";
+    private String binanceFuturesApiUrl = "https://fapi.binance.com";
     
     // Order Management
     private int orderTimeoutSeconds = 60;
@@ -148,6 +149,9 @@ public class TradingConfig {
 
     public String getBinanceApiUrl() { return binanceApiUrl; }
     public void setBinanceApiUrl(String binanceApiUrl) { this.binanceApiUrl = binanceApiUrl; }
+
+    public String getBinanceFuturesApiUrl() { return binanceFuturesApiUrl; }
+    public void setBinanceFuturesApiUrl(String binanceFuturesApiUrl) { this.binanceFuturesApiUrl = binanceFuturesApiUrl; }
 
     public int getOrderTimeoutSeconds() { return orderTimeoutSeconds; }
     public void setOrderTimeoutSeconds(int orderTimeoutSeconds) { this.orderTimeoutSeconds = orderTimeoutSeconds; }
