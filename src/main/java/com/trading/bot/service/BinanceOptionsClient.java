@@ -85,7 +85,7 @@ public class BinanceOptionsClient {
         return retryHandler.executeWithRetry(() -> {
             try {
                 String expiryStr = expiry.format(DateTimeFormatter.ofPattern("yyMMdd"));
-                String url = config.getBinanceApiUrl() + "/eapi/v1/optionInfo";
+                String url = config.getBinanceApiUrl() + "/eapi/v1/exchangeInfo";
                 
                 Request request = new Request.Builder()
                         .url(url)
@@ -102,8 +102,10 @@ public class BinanceOptionsClient {
                     
                     List<OptionContract> contracts = new ArrayList<>();
                     
-                    if (jsonNode.isArray()) {
-                        for (JsonNode contractNode : jsonNode) {
+                    // exchangeInfo returns: {"symbols": [...], "optionContracts": [...], ...}
+                    JsonNode symbolsNode = jsonNode.get("optionContracts");
+                    if (symbolsNode != null && symbolsNode.isArray()) {
+                        for (JsonNode contractNode : symbolsNode) {
                             String symbol = contractNode.get("symbol").asText();
                             
                             // Filter for BTC options with matching expiry
@@ -111,6 +113,21 @@ public class BinanceOptionsClient {
                                 OptionContract contract = parseOptionContract(contractNode);
                                 if (contract != null) {
                                     contracts.add(contract);
+                                }
+                            }
+                        }
+                    } else {
+                        // Fallback: check if it's still the old format (array of contracts)
+                        if (jsonNode.isArray()) {
+                            for (JsonNode contractNode : jsonNode) {
+                                String symbol = contractNode.get("symbol").asText();
+                                
+                                // Filter for BTC options with matching expiry
+                                if (symbol.startsWith("BTC") && symbol.contains(expiryStr)) {
+                                    OptionContract contract = parseOptionContract(contractNode);
+                                    if (contract != null) {
+                                        contracts.add(contract);
+                                    }
                                 }
                             }
                         }
@@ -245,7 +262,7 @@ public class BinanceOptionsClient {
     public List<LocalDate> getAvailableExpiries() throws Exception {
         return retryHandler.executeWithRetry(() -> {
             try {
-                String url = config.getBinanceApiUrl() + "/eapi/v1/optionInfo";
+                String url = config.getBinanceApiUrl() + "/eapi/v1/exchangeInfo";
                 
                 Request request = new Request.Builder()
                         .url(url)
@@ -262,8 +279,10 @@ public class BinanceOptionsClient {
                     
                     List<LocalDate> expiries = new ArrayList<>();
                     
-                    if (jsonNode.isArray()) {
-                        for (JsonNode contractNode : jsonNode) {
+                    // exchangeInfo returns: {"symbols": [...], "optionContracts": [...], ...}
+                    JsonNode contractsNode = jsonNode.get("optionContracts");
+                    if (contractsNode != null && contractsNode.isArray()) {
+                        for (JsonNode contractNode : contractsNode) {
                             String symbol = contractNode.get("symbol").asText();
                             
                             if (symbol.startsWith("BTC")) {
@@ -278,6 +297,29 @@ public class BinanceOptionsClient {
                                         }
                                     } catch (Exception e) {
                                         // Skip invalid expiry formats
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Fallback: check if it's still the old format (array of contracts)
+                        if (jsonNode.isArray()) {
+                            for (JsonNode contractNode : jsonNode) {
+                                String symbol = contractNode.get("symbol").asText();
+                                
+                                if (symbol.startsWith("BTC")) {
+                                    String[] parts = symbol.split("-");
+                                    if (parts.length >= 2) {
+                                        try {
+                                            String expiryStr = parts[1];
+                                            LocalDate expiry = LocalDate.parse("20" + expiryStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
+                                            
+                                            if (!expiries.contains(expiry)) {
+                                                expiries.add(expiry);
+                                            }
+                                        } catch (Exception e) {
+                                            // Skip invalid expiry formats
+                                        }
                                     }
                                 }
                             }
