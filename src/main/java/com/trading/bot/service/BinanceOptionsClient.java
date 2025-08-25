@@ -275,25 +275,40 @@ public class BinanceOptionsClient {
                                                          BigDecimal atmStrike, 
                                                          int strikeDistance, 
                                                          OptionType type) {
-        List<OptionContract> result = new ArrayList<>();
+        List<OptionContract> filteredContracts = new ArrayList<>();
         
+        // Filter contracts by type and separate by direction from ATM
         for (OptionContract contract : contracts) {
             if (contract.getType() == type) {
-                BigDecimal strikeDiff = contract.getStrike().subtract(atmStrike).abs();
-                
-                // Find options that are approximately strikeDistance away
-                if (strikeDiff.compareTo(BigDecimal.valueOf(strikeDistance * 1000)) >= 0) {
-                    result.add(contract);
+                if (type == OptionType.CALL && contract.getStrike().compareTo(atmStrike) > 0) {
+                    // For calls, only include strikes above ATM
+                    filteredContracts.add(contract);
+                } else if (type == OptionType.PUT && contract.getStrike().compareTo(atmStrike) < 0) {
+                    // For puts, only include strikes below ATM
+                    filteredContracts.add(contract);
                 }
             }
         }
         
-        // Sort by strike distance and return closest matches
-        result.sort((a, b) -> {
-            BigDecimal diffA = a.getStrike().subtract(atmStrike).abs();
-            BigDecimal diffB = b.getStrike().subtract(atmStrike).abs();
-            return diffA.compareTo(diffB);
-        });
+        // Sort by strike price
+        if (type == OptionType.CALL) {
+            // For calls, sort ascending (closest to ATM first)
+            filteredContracts.sort((a, b) -> a.getStrike().compareTo(b.getStrike()));
+        } else {
+            // For puts, sort descending (closest to ATM first)
+            filteredContracts.sort((a, b) -> b.getStrike().compareTo(a.getStrike()));
+        }
+        
+        // Return the specified number of strikes (default 10)
+        List<OptionContract> result = new ArrayList<>();
+        int count = Math.min(strikeDistance, filteredContracts.size());
+        
+        for (int i = 0; i < count; i++) {
+            result.add(filteredContracts.get(i));
+        }
+        
+        logger.debug("Found {} {} options within {} strikes from ATM {}", 
+                    result.size(), type, strikeDistance, atmStrike);
         
         return result;
     }
