@@ -16,7 +16,7 @@ trading:
   number-of-cycles: 10           # Total cycles per session
   
   # Position Configuration
-  position-quantity: 0.01        # Quantity per option leg (minimum: 0.01)
+  position-quantity: 1        # Quantity per option leg (minimum: 0.01)
   strike-distance: 10           # Strikes away from ATM for protective options
   
   # Risk Management
