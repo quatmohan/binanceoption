@@ -73,15 +73,16 @@ public class MarketDataService {
         List<OptionContract> otmCalls = binanceClient.findStrikeDistanceOptions(
                 contracts, atmStrike, config.getStrikeDistance(), OptionType.CALL);
         
-        // Find the call option that is above ATM strike by the configured distance
-        for (OptionContract contract : otmCalls) {
-            if (contract.getStrike().compareTo(atmStrike) > 0) {
-                logger.info("Found OTM call option: {} at strike {}", contract.getSymbol(), contract.getStrike());
-                return contract;
-            }
+        // The method now returns calls sorted by distance from ATM, take the furthest one (last in list)
+        if (!otmCalls.isEmpty()) {
+            OptionContract selectedCall = otmCalls.get(otmCalls.size() - 1); // Get the furthest OTM call
+            logger.info("Found OTM call option: {} at strike {} ({} strikes from ATM {})", 
+                       selectedCall.getSymbol(), selectedCall.getStrike(), 
+                       otmCalls.size(), atmStrike);
+            return selectedCall;
         }
         
-        logger.warn("No suitable OTM call found at {} strikes from ATM {}", config.getStrikeDistance(), atmStrike);
+        logger.warn("No suitable OTM call found within {} strikes from ATM {}", config.getStrikeDistance(), atmStrike);
         return null;
     }
     
@@ -89,15 +90,16 @@ public class MarketDataService {
         List<OptionContract> otmPuts = binanceClient.findStrikeDistanceOptions(
                 contracts, atmStrike, config.getStrikeDistance(), OptionType.PUT);
         
-        // Find the put option that is below ATM strike by the configured distance
-        for (OptionContract contract : otmPuts) {
-            if (contract.getStrike().compareTo(atmStrike) < 0) {
-                logger.info("Found OTM put option: {} at strike {}", contract.getSymbol(), contract.getStrike());
-                return contract;
-            }
+        // The method now returns puts sorted by distance from ATM, take the furthest one (last in list)
+        if (!otmPuts.isEmpty()) {
+            OptionContract selectedPut = otmPuts.get(otmPuts.size() - 1); // Get the furthest OTM put
+            logger.info("Found OTM put option: {} at strike {} ({} strikes from ATM {})", 
+                       selectedPut.getSymbol(), selectedPut.getStrike(), 
+                       otmPuts.size(), atmStrike);
+            return selectedPut;
         }
         
-        logger.warn("No suitable OTM put found at {} strikes from ATM {}", config.getStrikeDistance(), atmStrike);
+        logger.warn("No suitable OTM put found within {} strikes from ATM {}", config.getStrikeDistance(), atmStrike);
         return null;
     }
     
@@ -111,5 +113,83 @@ public class MarketDataService {
                 logger.warn("Failed to update prices for {}: {}", contract.getSymbol(), e.getMessage());
             }
         }
+    }
+    
+    /**
+     * Get all available strikes for calls and puts within the configured distance
+     * Useful for debugging and monitoring available options
+     */
+    public void logAvailableStrikes(List<OptionContract> contracts, BigDecimal atmStrike) {
+        List<OptionContract> availableCalls = binanceClient.findStrikeDistanceOptions(
+                contracts, atmStrike, config.getStrikeDistance(), OptionType.CALL);
+        List<OptionContract> availablePuts = binanceClient.findStrikeDistanceOptions(
+                contracts, atmStrike, config.getStrikeDistance(), OptionType.PUT);
+        
+        logger.info("Available strikes within {} positions from ATM {}:", config.getStrikeDistance(), atmStrike);
+        logger.info("  Calls ({}): {}", availableCalls.size(), 
+                   availableCalls.stream().map(c -> c.getStrike().toString()).toArray());
+        logger.info("  Puts ({}): {}", availablePuts.size(), 
+                   availablePuts.stream().map(c -> c.getStrike().toString()).toArray());
+    }
+    
+    /**
+     * Debug method to analyze all strikes and categorize them
+     */
+    public void debugStrikeAnalysis(List<OptionContract> contracts, BigDecimal currentBTCPrice) {
+        logger.info("=== STRIKE ANALYSIS DEBUG ===");
+        logger.info("Current BTC Price: {}", currentBTCPrice);
+        
+        // Find actual ATM strike
+        OptionContract atmCall = findATMCall(contracts, currentBTCPrice);
+        OptionContract atmPut = findATMPut(contracts, currentBTCPrice);
+        BigDecimal atmStrike = atmCall != null ? atmCall.getStrike() : 
+                              (atmPut != null ? atmPut.getStrike() : currentBTCPrice);
+        
+        logger.info("ATM Strike: {}", atmStrike);
+        
+        // Categorize all calls
+        logger.info("CALL OPTIONS:");
+        contracts.stream()
+                .filter(c -> c.getType() == OptionType.CALL)
+                .sorted((a, b) -> a.getStrike().compareTo(b.getStrike()))
+                .forEach(c -> {
+                    String category = c.getStrike().compareTo(currentBTCPrice) < 0 ? "ITM" :
+                                    c.getStrike().compareTo(currentBTCPrice) == 0 ? "ATM" : "OTM";
+                    logger.info("  {} Call @ {} ({})", category, c.getStrike(), c.getSymbol());
+                });
+        
+        // Categorize all puts
+        logger.info("PUT OPTIONS:");
+        contracts.stream()
+                .filter(c -> c.getType() == OptionType.PUT)
+                .sorted((a, b) -> b.getStrike().compareTo(a.getStrike()))
+                .forEach(c -> {
+                    String category = c.getStrike().compareTo(currentBTCPrice) > 0 ? "ITM" :
+                                    c.getStrike().compareTo(currentBTCPrice) == 0 ? "ATM" : "OTM";
+                    logger.info("  {} Put @ {} ({})", category, c.getStrike(), c.getSymbol());
+                });
+        
+        // Show what our filtering returns
+        List<OptionContract> selectedCalls = binanceClient.findStrikeDistanceOptions(
+                contracts, atmStrike, config.getStrikeDistance(), OptionType.CALL);
+        List<OptionContract> selectedPuts = binanceClient.findStrikeDistanceOptions(
+                contracts, atmStrike, config.getStrikeDistance(), OptionType.PUT);
+        
+        logger.info("SELECTED FOR IRON BUTTERFLY:");
+        logger.info("  Protective Calls: {}", selectedCalls.stream()
+                .map(c -> c.getStrike().toString()).toArray());
+        logger.info("  Protective Puts: {}", selectedPuts.stream()
+                .map(c -> c.getStrike().toString()).toArray());
+        
+        if (!selectedCalls.isEmpty()) {
+            OptionContract selectedCall = selectedCalls.get(selectedCalls.size() - 1);
+            logger.info("  Final Call Selection: {} @ {}", selectedCall.getSymbol(), selectedCall.getStrike());
+        }
+        if (!selectedPuts.isEmpty()) {
+            OptionContract selectedPut = selectedPuts.get(selectedPuts.size() - 1);
+            logger.info("  Final Put Selection: {} @ {}", selectedPut.getSymbol(), selectedPut.getStrike());
+        }
+        
+        logger.info("=== END STRIKE ANALYSIS ===");
     }
 }

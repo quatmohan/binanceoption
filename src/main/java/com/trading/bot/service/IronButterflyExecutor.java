@@ -58,6 +58,9 @@ public class IronButterflyExecutor {
             BigDecimal atmStrike = atmCall.getStrike();
             logger.info("ATM strike identified: {} (BTC price: {})", atmStrike, btcPrice);
             
+            // Debug: Analyze all available strikes
+            marketDataService.debugStrikeAnalysis(optionsChain, btcPrice);
+            
             // Step 3: Find OTM protective options
             OptionContract otmCall = marketDataService.findOTMCall(optionsChain, atmStrike);
             OptionContract otmPut = marketDataService.findOTMPut(optionsChain, atmStrike);
