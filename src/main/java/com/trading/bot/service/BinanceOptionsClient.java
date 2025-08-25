@@ -598,7 +598,7 @@ public class BinanceOptionsClient {
             OptionContract testContract = contracts.get(0);
             logger.info("Testing order book functionality with symbol: {}", testContract.getSymbol());
             
-            OrderBook orderBook = getOrderBook(testContract.getSymbol(), 5);
+            OrderBook orderBook = getOrderBook(testContract.getSymbol(), 10);
             
             logger.info("Order book test successful for {}: Best bid: {}, Best ask: {}", 
                        testContract.getSymbol(), orderBook.getBestBid(), orderBook.getBestAsk());

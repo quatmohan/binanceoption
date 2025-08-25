@@ -50,7 +50,7 @@ public class MarketDataService {
     
     private void updateContractPrices(OptionContract contract) throws Exception {
         try {
-            var orderBook = binanceClient.getOrderBook(contract.getSymbol(), 5);
+            var orderBook = binanceClient.getOrderBook(contract.getSymbol(), 10);
             contract.setBidPrice(orderBook.getBestBid());
             contract.setAskPrice(orderBook.getBestAsk());
             contract.setBidQuantity(orderBook.getBestBidQuantity());

@@ -318,7 +318,7 @@ public class AggressiveFillStrategy {
         // Create new order for remaining quantity with more aggressive pricing
         OrderBook orderBook = circuitBreaker.execute(() -> {
             try {
-                return binanceClient.getOrderBook(originalRequest.getSymbol(), 5);
+                return binanceClient.getOrderBook(originalRequest.getSymbol(), 10);
             } catch (Exception e) {
                 throw new RuntimeException("Get order book for partial fill failed", e);
             }

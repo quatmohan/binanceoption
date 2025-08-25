@@ -280,7 +280,7 @@ public class PositionManager {
             OrderSide closingSide = leg.getSide() == OrderSide.BUY ? OrderSide.SELL : OrderSide.BUY;
             
             // Get current market price for aggressive closing
-            OrderBook orderBook = binanceClient.getOrderBook(leg.getSymbol(), 5);
+            OrderBook orderBook = binanceClient.getOrderBook(leg.getSymbol(), 10);
             BigDecimal closingPrice;
             
             if (closingSide == OrderSide.SELL) {
