@@ -588,8 +588,11 @@ public class BinanceOptionsClient {
                 
                 FormBody formBody = formBuilder.build();
                 
+                // Convert FormBody to query string for signing
+                String queryString = formBodyToQueryString(formBody);
+                
                 // Sign the request
-                String signature = authService.createSignature(formBody);
+                String signature = authService.createSignature(queryString, config.getSecretKey());
                 
                 Request request = new Request.Builder()
                         .url(url)
@@ -636,7 +639,10 @@ public class BinanceOptionsClient {
                         .add("timestamp", String.valueOf(System.currentTimeMillis()))
                         .build();
                 
-                String signature = authService.createSignature(formBody);
+                // Convert FormBody to query string for signing
+                String queryString = formBodyToQueryString(formBody);
+                
+                String signature = authService.createSignature(queryString, config.getSecretKey());
                 
                 Request request = new Request.Builder()
                         .url(url)
@@ -699,5 +705,23 @@ public class BinanceOptionsClient {
             logger.error("Error parsing order response: {}", e.getMessage());
             throw new RuntimeException("Failed to parse order response", e);
         }
+    }
+    
+    /**
+     * Convert FormBody to query string for API signature
+     */
+    private String formBodyToQueryString(FormBody formBody) {
+        StringBuilder queryString = new StringBuilder();
+        
+        for (int i = 0; i < formBody.size(); i++) {
+            if (queryString.length() > 0) {
+                queryString.append("&");
+            }
+            queryString.append(formBody.encodedName(i))
+                      .append("=")
+                      .append(formBody.encodedValue(i));
+        }
+        
+        return queryString.toString();
     }
 }
