@@ -436,19 +436,36 @@ public class BinanceOptionsClient {
                         .get()
                         .build();
                 
+                logger.debug("Fetching order book for symbol: {} with depth: {}", symbol, depth);
+                
                 try (Response response = httpClient.newCall(request).execute()) {
+                    String responseBody = response.body().string();
+                    
                     if (!response.isSuccessful()) {
-                        throw new RuntimeException("Failed to get order book: " + response.code());
+                        logger.error("Failed to get order book for {}: {} - {}", symbol, response.code(), responseBody);
+                        throw new RuntimeException("Failed to get order book for " + symbol + ": " + response.code() + " - " + responseBody);
                     }
                     
-                    String responseBody = response.body().string();
+                    logger.debug("Order book response for {}: {}", symbol, responseBody.substring(0, Math.min(200, responseBody.length())));
+                    
                     OrderBook orderBook = objectMapper.readValue(responseBody, OrderBook.class);
                     orderBook.setSymbol(symbol);
+                    
+                    logger.debug("Parsed order book for {}: {} bids, {} asks, best bid: {}, best ask: {}", 
+                               symbol, 
+                               orderBook.getBids().size(), 
+                               orderBook.getAsks().size(),
+                               orderBook.getBestBid(),
+                               orderBook.getBestAsk());
                     
                     return orderBook;
                 }
             } catch (IOException e) {
+                logger.error("IO error fetching order book for {}: {}", symbol, e.getMessage());
                 throw new RuntimeException("Error fetching order book for " + symbol, e);
+            } catch (Exception e) {
+                logger.error("Unexpected error fetching order book for {}: {}", symbol, e.getMessage(), e);
+                throw new RuntimeException("Unexpected error fetching order book for " + symbol, e);
             }
         }, "getOrderBook");
     }
@@ -562,6 +579,34 @@ public class BinanceOptionsClient {
      */
     public List<OptionContract> getTodaysOptionsChain() throws Exception {
         return getOptionsChain(LocalDate.now());
+    }
+    
+    /**
+     * Test method to verify order book functionality with a sample symbol
+     */
+    public void testOrderBookFunctionality() throws Exception {
+        try {
+            // First get some option symbols to test with
+            List<OptionContract> contracts = getTodaysOptionsChain();
+            
+            if (contracts.isEmpty()) {
+                logger.warn("No option contracts available for testing order book");
+                return;
+            }
+            
+            // Test with the first available contract
+            OptionContract testContract = contracts.get(0);
+            logger.info("Testing order book functionality with symbol: {}", testContract.getSymbol());
+            
+            OrderBook orderBook = getOrderBook(testContract.getSymbol(), 5);
+            
+            logger.info("Order book test successful for {}: Best bid: {}, Best ask: {}", 
+                       testContract.getSymbol(), orderBook.getBestBid(), orderBook.getBestAsk());
+            
+        } catch (Exception e) {
+            logger.error("Order book test failed: {}", e.getMessage(), e);
+            throw e;
+        }
     }
     
     /**

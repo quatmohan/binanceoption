@@ -1,20 +1,23 @@
 package com.trading.bot.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.trading.bot.model.deserializer.OrderBookDeserializer;
 import java.math.BigDecimal;
 import java.util.List;
 
+@JsonDeserialize(using = OrderBookDeserializer.class)
 public class OrderBook {
-    @JsonProperty("bids")
     private List<PriceLevel> bids;
-    
-    @JsonProperty("asks")
     private List<PriceLevel> asks;
-    
-    @JsonProperty("symbol")
     private String symbol;
 
     public OrderBook() {}
+
+    public OrderBook(List<PriceLevel> bids, List<PriceLevel> asks) {
+        this.bids = bids;
+        this.asks = asks;
+    }
 
     // Getters and Setters
     public List<PriceLevel> getBids() { return bids; }
@@ -43,10 +46,7 @@ public class OrderBook {
     }
 
     public static class PriceLevel {
-        @JsonProperty("price")
         private BigDecimal price;
-        
-        @JsonProperty("qty")
         private BigDecimal quantity;
 
         public PriceLevel() {}
@@ -61,5 +61,10 @@ public class OrderBook {
 
         public BigDecimal getQuantity() { return quantity; }
         public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+
+        @Override
+        public String toString() {
+            return String.format("PriceLevel{price=%s, quantity=%s}", price, quantity);
+        }
     }
 }
