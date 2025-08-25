@@ -4,8 +4,8 @@
 trading:
   # REQUIRED: Binance API Credentials
   # Get these from your Binance account -> API Management
-  api-key: "your_binance_api_key_here"
-  secret-key: "your_binance_secret_key_here"
+  api-key: "hHdUaIiVk4nV7AVskYiFIK1U7I6wqWXDIDloIXAv8MfMM01lfeJKcyjbXCtpNeGC"
+  secret-key: "rPBOAkSxn02Rmv26Hni3N9lU3595lCV7p1Jjn86dMDe8PxM3UzDEVd0HRG0ggNiW"
   
   # Trading Session Times (24-hour format)
   session-start-time: "12:25:00"  # Default: 12:25 PM
@@ -26,8 +26,8 @@ trading:
   
   # OPTIONAL: Telegram Notifications
   # Create a bot via @BotFather on Telegram to get these
-  telegram-bot-token: "your_telegram_bot_token_here"
-  telegram-chat-id: "your_telegram_chat_id_here"
+  telegram-bot-token: "AAFRPUgszliMB8Gxw8qPE0YRTa3eMd6_hDw"
+  telegram-chat-id: "-100304277317"
 
 # Logging Configuration
 logging:
