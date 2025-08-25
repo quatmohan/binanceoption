@@ -30,6 +30,47 @@ public class TradingConfig {
     @NotNull(message = "Session end time is required")
     private LocalTime sessionEndTime = LocalTime.of(13, 25);
     
+    // String setters for flexible time parsing
+    public void setSessionStartTime(String timeStr) {
+        this.sessionStartTime = parseTimeString(timeStr);
+    }
+    
+    public void setSessionEndTime(String timeStr) {
+        this.sessionEndTime = parseTimeString(timeStr);
+    }
+    
+    private LocalTime parseTimeString(String timeStr) {
+        if (timeStr == null || timeStr.trim().isEmpty()) {
+            return null;
+        }
+        
+        // Clean the string
+        timeStr = timeStr.trim().replaceAll("[^\\d:]", "");
+        
+        try {
+            // Try parsing with seconds first (HH:mm:ss)
+            if (timeStr.matches("\\d{2}:\\d{2}:\\d{2}")) {
+                return LocalTime.parse(timeStr);
+            }
+            // Try parsing without seconds (HH:mm)
+            else if (timeStr.matches("\\d{2}:\\d{2}")) {
+                return LocalTime.parse(timeStr + ":00");
+            }
+            // Try parsing with single digit hours
+            else if (timeStr.matches("\\d{1}:\\d{2}(:\\d{2})?")) {
+                if (!timeStr.contains(":00")) {
+                    timeStr += ":00";
+                }
+                return LocalTime.parse(timeStr);
+            }
+            else {
+                throw new IllegalArgumentException("Invalid time format: " + timeStr);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to parse time: " + timeStr + ". Expected formats: HH:mm or HH:mm:ss", e);
+        }
+    }
+    
     // Trading Parameters
     @Positive(message = "Cycle interval must be positive")
     private int cycleIntervalMinutes = 5;
