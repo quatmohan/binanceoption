@@ -7,8 +7,8 @@ trading:
   secret-key: "test-secret-key-67890"
   
   # Short session for testing
-  session-start-time: "09:00"
-  session-end-time: "09:10"
+  session-start-time: "09:00:00"
+  session-end-time: "09:10:00"
   
   # Fast cycles for testing
   cycle-interval-minutes: 1
