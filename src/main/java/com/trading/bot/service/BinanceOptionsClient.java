@@ -102,8 +102,8 @@ public class BinanceOptionsClient {
                     
                     List<OptionContract> contracts = new ArrayList<>();
                     
-                    // exchangeInfo returns: {"symbols": [...], "optionContracts": [...], ...}
-                    JsonNode symbolsNode = jsonNode.get("optionContracts");
+                    // exchangeInfo returns: {"symbols": [...], "timezone": "UTC", ...}
+                    JsonNode symbolsNode = jsonNode.get("symbols");
                     if (symbolsNode != null && symbolsNode.isArray()) {
                         for (JsonNode contractNode : symbolsNode) {
                             String symbol = contractNode.get("symbol").asText();
@@ -117,20 +117,7 @@ public class BinanceOptionsClient {
                             }
                         }
                     } else {
-                        // Fallback: check if it's still the old format (array of contracts)
-                        if (jsonNode.isArray()) {
-                            for (JsonNode contractNode : jsonNode) {
-                                String symbol = contractNode.get("symbol").asText();
-                                
-                                // Filter for BTC options with matching expiry
-                                if (symbol.startsWith("BTC") && symbol.contains(expiryStr)) {
-                                    OptionContract contract = parseOptionContract(contractNode);
-                                    if (contract != null) {
-                                        contracts.add(contract);
-                                    }
-                                }
-                            }
-                        }
+                        logger.warn("No 'symbols' array found in exchangeInfo response");
                     }
                     
                     logger.info("Retrieved {} option contracts for expiry {}", contracts.size(), expiry);
@@ -145,33 +132,33 @@ public class BinanceOptionsClient {
     private OptionContract parseOptionContract(JsonNode contractNode) {
         try {
             String symbol = contractNode.get("symbol").asText();
-            BigDecimal strike = new BigDecimal(contractNode.get("strikePrice").asText());
             
-            // Parse expiry from symbol (format: BTC-YYMMDD-STRIKE-C/P)
+            // Parse symbol format: BTC-YYMMDD-STRIKE-C/P
             String[] parts = symbol.split("-");
             if (parts.length >= 4) {
                 String expiryStr = parts[1];
+                String strikeStr = parts[2];
+                String typeStr = parts[3];
+                
+                // Parse expiry date
                 LocalDate expiry = LocalDate.parse("20" + expiryStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
                 
-                OptionType type = parts[3].equals("C") ? OptionType.CALL : OptionType.PUT;
+                // Parse strike price from symbol
+                BigDecimal strike = new BigDecimal(strikeStr);
+                
+                // Parse option type
+                OptionType type = typeStr.equals("C") ? OptionType.CALL : OptionType.PUT;
                 
                 OptionContract contract = new OptionContract(symbol, strike, expiry, type);
                 
-                // Set bid/ask prices if available
-                if (contractNode.has("bidPrice")) {
-                    contract.setBidPrice(new BigDecimal(contractNode.get("bidPrice").asText()));
-                }
-                if (contractNode.has("askPrice")) {
-                    contract.setAskPrice(new BigDecimal(contractNode.get("askPrice").asText()));
-                }
-                if (contractNode.has("bidQty")) {
-                    contract.setBidQuantity(new BigDecimal(contractNode.get("bidQty").asText()));
-                }
-                if (contractNode.has("askQty")) {
-                    contract.setAskQuantity(new BigDecimal(contractNode.get("askQty").asText()));
-                }
+                // Note: exchangeInfo doesn't include pricing data (bid/ask prices)
+                // Pricing data needs to be fetched separately using /eapi/v1/ticker or /eapi/v1/depth
+                logger.debug("Parsed option contract: {} - Strike: {}, Expiry: {}, Type: {}", 
+                           symbol, strike, expiry, type);
                 
                 return contract;
+            } else {
+                logger.warn("Invalid option symbol format: {}", symbol);
             }
         } catch (Exception e) {
             logger.warn("Failed to parse option contract: {}", contractNode, e);
@@ -229,6 +216,47 @@ public class BinanceOptionsClient {
         return result;
     }
     
+    public void updateOptionPricing(OptionContract contract) throws Exception {
+        retryHandler.executeWithRetry(() -> {
+            try {
+                String url = config.getBinanceApiUrl() + "/eapi/v1/ticker";
+                Request request = new Request.Builder()
+                        .url(url + "?symbol=" + contract.getSymbol())
+                        .get()
+                        .build();
+                
+                try (Response response = httpClient.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new RuntimeException("Failed to get option pricing: " + response.code());
+                    }
+                    
+                    String responseBody = response.body().string();
+                    JsonNode jsonNode = objectMapper.readTree(responseBody);
+                    
+                    // Update contract with pricing data
+                    if (jsonNode.has("bidPrice") && !jsonNode.get("bidPrice").asText().equals("0")) {
+                        contract.setBidPrice(new BigDecimal(jsonNode.get("bidPrice").asText()));
+                    }
+                    if (jsonNode.has("askPrice") && !jsonNode.get("askPrice").asText().equals("0")) {
+                        contract.setAskPrice(new BigDecimal(jsonNode.get("askPrice").asText()));
+                    }
+                    if (jsonNode.has("bidQty")) {
+                        contract.setBidQuantity(new BigDecimal(jsonNode.get("bidQty").asText()));
+                    }
+                    if (jsonNode.has("askQty")) {
+                        contract.setAskQuantity(new BigDecimal(jsonNode.get("askQty").asText()));
+                    }
+                    
+                    logger.debug("Updated pricing for {}: Bid={}, Ask={}", 
+                               contract.getSymbol(), contract.getBidPrice(), contract.getAskPrice());
+                }
+                return null;
+            } catch (IOException e) {
+                throw new RuntimeException("Error fetching option pricing for " + contract.getSymbol(), e);
+            }
+        }, "updateOptionPricing");
+    }
+
     public OrderBook getOrderBook(String symbol, int depth) throws Exception {
         return retryHandler.executeWithRetry(() -> {
             try {
@@ -279,10 +307,10 @@ public class BinanceOptionsClient {
                     
                     List<LocalDate> expiries = new ArrayList<>();
                     
-                    // exchangeInfo returns: {"symbols": [...], "optionContracts": [...], ...}
-                    JsonNode contractsNode = jsonNode.get("optionContracts");
-                    if (contractsNode != null && contractsNode.isArray()) {
-                        for (JsonNode contractNode : contractsNode) {
+                    // exchangeInfo returns: {"symbols": [...], "timezone": "UTC", ...}
+                    JsonNode symbolsNode = jsonNode.get("symbols");
+                    if (symbolsNode != null && symbolsNode.isArray()) {
+                        for (JsonNode contractNode : symbolsNode) {
                             String symbol = contractNode.get("symbol").asText();
                             
                             if (symbol.startsWith("BTC")) {
@@ -302,28 +330,7 @@ public class BinanceOptionsClient {
                             }
                         }
                     } else {
-                        // Fallback: check if it's still the old format (array of contracts)
-                        if (jsonNode.isArray()) {
-                            for (JsonNode contractNode : jsonNode) {
-                                String symbol = contractNode.get("symbol").asText();
-                                
-                                if (symbol.startsWith("BTC")) {
-                                    String[] parts = symbol.split("-");
-                                    if (parts.length >= 2) {
-                                        try {
-                                            String expiryStr = parts[1];
-                                            LocalDate expiry = LocalDate.parse("20" + expiryStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
-                                            
-                                            if (!expiries.contains(expiry)) {
-                                                expiries.add(expiry);
-                                            }
-                                        } catch (Exception e) {
-                                            // Skip invalid expiry formats
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        logger.warn("No 'symbols' array found in exchangeInfo response");
                     }
                     
                     expiries.sort(LocalDate::compareTo);
